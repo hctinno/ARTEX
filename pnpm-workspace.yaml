@@ -1,0 +1,11 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'engine/ui/goose-acp-client'
+nodeLinker: hoisted
+allowBuilds:
+  '@modelcontextprotocol/ext-apps': true
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+blockExoticSubdeps: false

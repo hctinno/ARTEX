@@ -1,0 +1,44 @@
+{
+  "name": "@artex/desktop",
+  "productName": "ARTEX",
+  "version": "0.1.0",
+  "description": "ARTEX desktop coding-agent IDE powered by the goose engine",
+  "author": "HCT",
+  "private": true,
+  "main": ".vite/build/main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "typecheck": "tsc --noEmit -p .",
+    "e2e": "playwright test -c test/e2e/playwright.config.ts"
+  },
+  "dependencies": {
+    "@aaif/goose-acp-client": "workspace:*",
+    "@agentclientprotocol/sdk": "1.5.0",
+    "@artex/core": "workspace:*",
+    "@artex/ui": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.11.2",
+    "@electron-forge/plugin-vite": "^7.11.2",
+    "@electron-forge/shared-types": "^7.11.2",
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.4",
+    "electron": "43.4.0",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.2.1"
+  }
+}

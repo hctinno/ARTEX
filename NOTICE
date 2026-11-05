@@ -1,0 +1,10 @@
+ARTEX
+Copyright 2026 HCT
+
+This product includes software developed by the goose project
+(https://github.com/aaif-goose/goose), licensed under the Apache License 2.0.
+The original license is in engine/LICENSE.
+
+Modifications to the goose source under engine/ are listed in
+docs/engine-patches.md. ARTEX is not endorsed by the goose project or the
+Agentic AI Foundation.

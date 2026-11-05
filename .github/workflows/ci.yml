@@ -1,0 +1,69 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - name: Use HTTPS for GitHub git dependencies
+        run: |
+          git config --global --add url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global --add url."https://github.com/".insteadOf "git@github.com:"
+          git config --global --add url."https://github.com/".insteadOf "git+ssh://git@github.com/"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm test:scripts
+
+  build:
+    needs: unit
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    env:
+      RUSTUP_AUTO_INSTALL: 1
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: rustup toolchain install
+        working-directory: engine
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: engine }
+      - name: Use HTTPS for GitHub git dependencies
+        run: |
+          git config --global --add url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global --add url."https://github.com/".insteadOf "git@github.com:"
+          git config --global --add url."https://github.com/".insteadOf "git+ssh://git@github.com/"
+      - run: pnpm install --frozen-lockfile
+      # 경로·심볼릭 링크·셸 차이로 OS별로만 드러나는 단위 테스트 실패를 잡는다.
+      - run: pnpm test
+      - run: pnpm build:engine
+      - run: pnpm exec electron-forge package
+        working-directory: apps/desktop
+      - run: pnpm e2e
+        working-directory: apps/desktop
+      - run: pnpm exec electron-forge make
+        working-directory: apps/desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artex-${{ matrix.os }}
+          path: apps/desktop/out/make/**
