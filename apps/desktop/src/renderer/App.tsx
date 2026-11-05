@@ -4,12 +4,23 @@ import { Composer } from './components/Composer';
 import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
 import { ThreadView } from './components/ThreadView';
-import { appStore, bootEngine, controller, ensureThreadSession } from './runtime';
+import { appStore, bootEngine, connectionStore, controller, ensureThreadSession, getConnection } from './runtime';
 import { useStore } from './state/use-store';
+
+const errMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+const ENGINE_LABEL: Record<Exclude<EngineStatusView['state'], 'ready'>, string> = {
+  starting: '시작 중',
+  restarting: '재시작 중',
+  failed: '시작 실패',
+  stopped: '중지됨',
+};
 
 export function App() {
   const state = useStore(appStore, () => appStore.getState());
   useStore(controller, () => controller.getVersion());
+  const connVersion = useStore(connectionStore, () => connectionStore.getVersion());
+  const [readyThreadId, setReadyThreadId] = useState<string | null>(null);
   const [engine, setEngine] = useState<EngineStatusView>({ state: 'starting' });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [threadError, setThreadError] = useState<string | null>(null);
@@ -21,17 +32,32 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (engine.state === 'ready') void bootEngine().catch((e) => setThreadError(String(e)));
+    if (engine.state === 'ready') void bootEngine().catch((e) => setThreadError(errMessage(e)));
   }, [engine.state]);
 
   const selected = state.threads.find((t) => t.id === state.selectedThreadId) ?? null;
 
   useEffect(() => {
-    if (selected && engine.state === 'ready') {
-      setThreadError(null);
-      void ensureThreadSession(selected).catch((e) => setThreadError(e instanceof Error ? e.message : String(e)));
-    }
-  }, [selected?.id, engine.state]);
+    setReadyThreadId(null);
+    if (!selected || !getConnection()) return;
+    let cancelled = false;
+    setThreadError(null);
+    ensureThreadSession(selected).then(
+      () => {
+        if (!cancelled) setReadyThreadId(selected.id);
+      },
+      (e) => {
+        if (!cancelled) setThreadError(errMessage(e));
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.id, connVersion]);
+
+  const report = (p: Promise<unknown>) => {
+    p.catch((e) => setThreadError(errMessage(e)));
+  };
 
   const statusOf = (id: string) => controller.getThread(id).status;
   const runtime = controller.getThread(selected?.id ?? '');
@@ -44,15 +70,21 @@ export function App() {
         threads={state.threads}
         statusOf={statusOf}
         selectedId={state.selectedThreadId}
-        onSelect={(id) => appStore.selectThread(id)}
-        onNewThread={(projectId) => void appStore.createThread(projectId, '새 스레드')}
+        onSelect={(id) => {
+          setSettingsOpen(false);
+          appStore.selectThread(id);
+        }}
+        onNewThread={(projectId) => {
+          setSettingsOpen(false);
+          void appStore.createThread(projectId, '새 스레드');
+        }}
         onAddProject={() => void appStore.addProject()}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] bg-[var(--artex-pane)] shadow-[var(--artex-shadow)]">
         {engine.state !== 'ready' && (
           <div role="status" className="bg-[var(--artex-warn-soft)] px-7 py-2 text-[13px] text-[var(--artex-warn-text)]">
-            엔진 {engine.state}
+            엔진 {ENGINE_LABEL[engine.state]}
             {engine.message ? ` · ${engine.message}` : ''}
           </div>
         )}
@@ -72,11 +104,13 @@ export function App() {
             </div>
             <div className="mx-auto w-full max-w-[800px] px-7 pb-5">
               <Composer
+                key={selected.id}
+                disabled={readyThreadId !== selected.id}
                 running={running}
                 configOptions={runtime.configOptions}
-                onSend={(text) => void controller.send(selected.id, text)}
-                onCancel={() => void controller.cancel(selected.id)}
-                onConfig={(id, value) => void controller.setConfig(selected.id, id, value)}
+                onSend={(text) => report(controller.send(selected.id, text))}
+                onCancel={() => report(controller.cancel(selected.id))}
+                onConfig={(id, value) => report(controller.setConfig(selected.id, id, value))}
               />
             </div>
           </>

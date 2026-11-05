@@ -3,12 +3,14 @@ import { COMPOSER_CONFIG_IDS, type ConfigOptionView } from '@artex/core';
 
 export function Composer({
   running,
+  disabled = false,
   configOptions,
   onSend,
   onCancel,
   onConfig,
 }: {
   running: boolean;
+  disabled?: boolean;
   configOptions: ConfigOptionView[];
   onSend(text: string): void;
   onCancel(): void;
@@ -19,7 +21,7 @@ export function Composer({
 
   const submit = () => {
     const trimmed = text.trim();
-    if (!trimmed || running) return;
+    if (!trimmed || running || disabled) return;
     onSend(trimmed);
     setText('');
   };
@@ -61,11 +63,11 @@ export function Composer({
           </label>
         ))}
         {running ? (
-          <button type="button" onClick={onCancel} className="ml-auto min-h-10 rounded-full bg-[var(--artex-fill)] px-4 text-sm font-semibold">
+          <button type="button" onClick={onCancel} className="ml-auto min-h-11 rounded-full bg-[var(--artex-fill)] px-4 text-sm font-semibold">
             중단
           </button>
         ) : (
-          <button type="button" aria-label="보내기" onClick={submit} className="ml-auto size-10 rounded-full bg-[var(--artex-accent)] text-white">
+          <button type="button" aria-label="보내기" disabled={disabled} onClick={submit} className="ml-auto size-11 rounded-full bg-[var(--artex-accent)] text-white disabled:opacity-40">
             ↑
           </button>
         )}

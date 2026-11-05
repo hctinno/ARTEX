@@ -8,6 +8,30 @@ export const controller = new SessionController();
 let connection: EngineConnection | null = null;
 let generation = 0;
 const attached = new Set<string>();
+const pending = new Map<string, Promise<void>>();
+
+/** 연결이 새로 설정되거나 끊길 때마다 버전이 오른다. UI 효과가 이를 구독해 재연결 후 세션을 다시 붙인다. */
+let connectionVersion = 0;
+const connectionListeners = new Set<() => void>();
+export const connectionStore = {
+  subscribe(l: () => void): () => void {
+    connectionListeners.add(l);
+    return () => connectionListeners.delete(l);
+  },
+  getVersion: () => connectionVersion,
+};
+function bumpConnection(): void {
+  connectionVersion++;
+  for (const l of [...connectionListeners]) l();
+}
+
+export function dedupe<K>(map: Map<K, Promise<void>>, key: K, fn: () => Promise<void>): Promise<void> {
+  const existing = map.get(key);
+  if (existing) return existing;
+  const p = fn().finally(() => map.delete(key));
+  map.set(key, p);
+  return p;
+}
 
 export function getConnection(): EngineConnection | null {
   return connection;
@@ -28,6 +52,7 @@ export async function bootEngine(): Promise<void> {
       connection = null;
       attached.clear();
       controller.markEngineLost('엔진 연결 끊김');
+      bumpConnection();
     },
   });
   if (gen !== generation) {
@@ -35,11 +60,17 @@ export async function bootEngine(): Promise<void> {
     return;
   }
   connection = conn;
+  attached.clear();
   controller.setPort(conn);
+  bumpConnection();
 }
 
-export async function ensureThreadSession(thread: ThreadRecord): Promise<void> {
-  if (attached.has(thread.id)) return;
+export function ensureThreadSession(thread: ThreadRecord): Promise<void> {
+  if (attached.has(thread.id)) return Promise.resolve();
+  return dedupe(pending, thread.id, () => attach(thread));
+}
+
+async function attach(thread: ThreadRecord): Promise<void> {
   if (thread.sessionId) {
     await controller.resume(thread.id, thread.sessionId, thread.cwd);
   } else {

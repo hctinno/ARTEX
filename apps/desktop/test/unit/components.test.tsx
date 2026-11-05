@@ -55,6 +55,16 @@ describe('Composer', () => {
     expect(screen.getByLabelText('지시 입력')).toHaveValue('a\nb');
   });
 
+  it('disabled면 Enter와 클릭 모두 전송하지 않음', async () => {
+    const onSend = vi.fn();
+    render(<Composer {...base} disabled onSend={onSend} />);
+    const box = screen.getByLabelText('지시 입력');
+    await userEvent.type(box, '고쳐줘{Enter}');
+    expect(screen.getByRole('button', { name: '보내기' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: '보내기' }));
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
   it('실행 중에는 중단 버튼', async () => {
     const onCancel = vi.fn();
     render(<Composer {...base} running onSend={() => {}} onCancel={onCancel} />);
