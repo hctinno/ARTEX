@@ -4,3 +4,4 @@ export * from './acp-types';
 export * from './timeline';
 export * from './permission';
 export * from './config-options';
+export * from './session-controller';
