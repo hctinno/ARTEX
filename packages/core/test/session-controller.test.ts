@@ -194,6 +194,32 @@ describe('SessionController', () => {
     expect(c.getThread('t1').status).toBe('error');
   });
 
+  it('취소 진행 중 도착한 승인 요청은 cancelled로 즉시 응답하고, 다음 send는 정상 동작한다', async () => {
+    const gate = deferred<{ stopReason: string }>();
+    const gate2 = deferred<{ stopReason: string }>();
+    let calls = 0;
+    const c = new SessionController();
+    c.setPort(fakePort({ prompt: vi.fn(() => (++calls === 1 ? gate.promise : gate2.promise)) }));
+    const sid = await c.start('t1', '/p');
+    const sending = c.send('t1', 'push');
+    await c.cancel('t1');
+    await expect(c.handlePermission(permission(sid))).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
+    expect(c.getThread('t1').items.find((i) => i.kind === 'permission')).toBeUndefined();
+    gate.resolve({ stopReason: 'cancelled' });
+    await sending;
+    expect(c.getThread('t1').status).toBe('idle');
+
+    const sending2 = c.send('t1', 'again');
+    const answer2 = c.handlePermission(permission(sid));
+    expect(c.getThread('t1').items.find((i) => i.kind === 'permission')).toMatchObject({ resolved: null });
+    expect(c.getThread('t1').status).toBe('awaiting_approval');
+    c.respond('t1', (c.getThread('t1').items.find((i) => i.kind === 'permission') as { requestId: string }).requestId, 'allow_once');
+    await expect(answer2).resolves.toEqual({ outcome: { outcome: 'selected', optionId: 'a1' } });
+    gate2.resolve({ stopReason: 'end_turn' });
+    await sending2;
+    expect(c.getThread('t1').status).toBe('done');
+  });
+
   it('idle 스레드에 도착한 승인 요청은 cancelled로 즉시 응답하고 카드를 만들지 않는다', async () => {
     const c = new SessionController();
     c.setPort(fakePort());

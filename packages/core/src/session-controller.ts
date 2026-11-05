@@ -41,6 +41,7 @@ export class SessionController {
   private sessionToThread = new Map<string, string>();
   private threadToSession = new Map<string, string>();
   private pending = new Map<string, PendingPermission>();
+  private cancelling = new Set<string>();
   private listeners = new Set<() => void>();
   private seq = 0;
   private version = 0;
@@ -76,6 +77,7 @@ export class SessionController {
 
   async send(threadId: string, text: string): Promise<void> {
     const sessionId = this.requireSession(threadId);
+    this.cancelling.delete(threadId);
     const current = this.getThread(threadId);
     this.patch(threadId, {
       items: appendUserText(current.items, text),
@@ -88,11 +90,14 @@ export class SessionController {
       if (this.getThread(threadId).status !== 'error') {
         this.fail(threadId, error instanceof Error ? error.message : String(error));
       }
+    } finally {
+      this.cancelling.delete(threadId);
     }
   }
 
   async cancel(threadId: string): Promise<void> {
     const sessionId = this.requireSession(threadId);
+    this.cancelling.add(threadId);
     this.cancelPending(threadId);
     await this.requirePort().cancel(sessionId);
   }
@@ -111,7 +116,7 @@ export class SessionController {
 
   handlePermission(request: PermissionRequestLike): Promise<PermissionResponseLike> {
     const threadId = this.sessionToThread.get(request.sessionId);
-    if (!threadId) return Promise.resolve({ outcome: { outcome: 'cancelled' } });
+    if (!threadId || this.cancelling.has(threadId)) return Promise.resolve({ outcome: { outcome: 'cancelled' } });
     const current = this.getThread(threadId);
     if (current.status !== 'running' && current.status !== 'awaiting_approval') {
       return Promise.resolve({ outcome: { outcome: 'cancelled' } });
