@@ -2,6 +2,7 @@ import { _electron as electron, expect, test, type ElectronApplication } from '@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { tokens } from '@artex/ui';
 import { startFakeOpenAI } from './fake-openai';
 
 const appDir = path.resolve(__dirname, '../..');
@@ -87,39 +88,50 @@ async function withScenario(
 
 test.skip(!fs.existsSync(engineBin), `엔진 바이너리 없음: ${engineBin} (pnpm build:engine 필요)`);
 
-test('Local 스레드: 지시 → 승인 → 도구 실행 → 응답, 사용자 말풍선 1개', async () => {
-  await withScenario(
-    [{ toolCall: { name: 'developer__shell', arguments: { command: 'echo artex-e2e' } } }, { text: '명령 실행 완료' }],
-    async ({ app, llm, project }) => {
-      const win = await app.firstWindow();
+// 계산된 body 배경은 테마 토큰(tokens.bg: 라이트 #E9E9EE, 다크 #000000)과 같아야 다크 패스가 진짜다.
+const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
 
-      await expect(win.getByText('프로젝트 추가 후 새 스레드 시작')).toBeVisible({ timeout: 60_000 });
-      await expect(win.getByRole('status')).toHaveCount(0, { timeout: 60_000 });
+for (const scheme of ['light', 'dark'] as const) {
+  test(`Local 스레드(${scheme}): 지시 → 승인 → 도구 실행 → 응답, 사용자 말풍선 1개`, async () => {
+    await withScenario(
+      [{ toolCall: { name: 'developer__shell', arguments: { command: 'echo artex-e2e' } } }, { text: '명령 실행 완료' }],
+      async ({ app, llm, project }) => {
+        const win = await app.firstWindow();
+        // nativeTheme.themeSource는 Linux(xvfb)에서 prefers-color-scheme을 바꾸지 못해(관찰됨) CDP 미디어 에뮬레이션을 쓴다.
+        await win.emulateMedia({ colorScheme: scheme });
+        await expect
+          .poll(() => win.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches))
+          .toBe(scheme === 'dark');
+        await expect.poll(() => win.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(rgb(tokens[scheme].bg));
 
-      await win.getByRole('button', { name: '프로젝트 추가' }).click();
-      await win.getByRole('button', { name: `${path.basename(project)} 새 스레드` }).click();
-      await expect(win.getByRole('heading', { name: '새 스레드' })).toBeVisible();
+        await expect(win.getByText('프로젝트 추가 후 새 스레드 시작')).toBeVisible({ timeout: 60_000 });
+        await expect(win.getByRole('status')).toHaveCount(0, { timeout: 60_000 });
 
-      await win.getByLabel('지시 입력').fill('에코 실행해줘');
-      await win.getByLabel('지시 입력').press('Enter');
+        await win.getByRole('button', { name: '프로젝트 추가' }).click();
+        await win.getByRole('button', { name: `${path.basename(project)} 새 스레드` }).click();
+        await expect(win.getByRole('heading', { name: '새 스레드' })).toBeVisible();
 
-      const approval = win.getByRole('group', { name: '승인 요청' });
-      await expect(approval).toBeVisible({ timeout: 60_000 });
-      await expect(win.getByText('승인 대기')).toBeVisible();
-      await approval.getByRole('button', { name: '승인' }).click();
+        await win.getByLabel('지시 입력').fill('에코 실행해줘');
+        await win.getByLabel('지시 입력').press('Enter');
 
-      await expect(win.getByText('명령 실행 완료')).toBeVisible({ timeout: 60_000 });
-      await expect(win.getByRole('navigation').getByText('완료', { exact: true })).toBeVisible();
-      await expect(win.getByText('에코 실행해줘')).toHaveCount(1);
+        const approval = win.getByRole('group', { name: '승인 요청' });
+        await expect(approval).toBeVisible({ timeout: 60_000 });
+        await expect(win.getByText('승인 대기')).toBeVisible();
+        await approval.getByRole('button', { name: '승인' }).click();
 
-      // 승인 → 실제 셸 실행 → 출력이 LLM에 전달됐음을 요청 본문으로 증명한다.
-      const agent = agentRequests(llm.requests);
-      expect(agent.length).toBeGreaterThanOrEqual(2);
-      expect(agent[0]!.tools!.map((t) => t.function.name).some((n) => n.includes('shell'))).toBe(true);
-      expect(agent.slice(1).some((r) => toolOutputs(r).some((o) => o.includes('artex-e2e')))).toBe(true);
-    }
-  );
-});
+        await expect(win.getByText('명령 실행 완료')).toBeVisible({ timeout: 60_000 });
+        await expect(win.getByRole('navigation').getByText('완료', { exact: true })).toBeVisible();
+        await expect(win.getByText('에코 실행해줘')).toHaveCount(1);
+
+        // 승인 → 실제 셸 실행 → 출력이 LLM에 전달됐음을 요청 본문으로 증명한다.
+        const agent = agentRequests(llm.requests);
+        expect(agent.length).toBeGreaterThanOrEqual(2);
+        expect(agent[0]!.tools!.map((t) => t.function.name).some((n) => n.includes('shell'))).toBe(true);
+        expect(agent.slice(1).some((r) => toolOutputs(r).some((o) => o.includes('artex-e2e')))).toBe(true);
+      }
+    );
+  });
+}
 
 test('승인 대기 중 중단 → 스레드가 대기 상태에 갇히지 않음', async () => {
   await withScenario(
