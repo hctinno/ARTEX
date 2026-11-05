@@ -1,0 +1,41 @@
+:root {
+  --artex-bg: #E9E9EE;
+  --artex-pane: #FFFFFF;
+  --artex-card: #F3F3F6;
+  --artex-text: #1C1C1E;
+  --artex-muted: #6C6C70;
+  --artex-accent: #0B6BDB;
+  --artex-add-text: #1B7A3C;
+  --artex-del-text: #B3261E;
+  --artex-warn-text: #8F4A00;
+  --artex-fill: rgba(118, 118, 128, 0.12);
+  --artex-add-bg: #E2F5E8;
+  --artex-del-bg: #FDEBE9;
+  --artex-warn-soft: #FFEFD6;
+  --artex-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);
+  --artex-radius-pane: 24px;
+  --artex-radius-row: 12px;
+  --artex-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
+  --artex-mono: 'SF Mono', ui-monospace, 'JetBrains Mono', monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --artex-bg: #000000;
+    --artex-pane: #161618;
+    --artex-card: #232326;
+    --artex-text: #F5F5F7;
+    --artex-muted: #A1A1A8;
+    --artex-accent: #1F6FE5;
+    --artex-add-text: #5FD98A;
+    --artex-del-text: #FF8A80;
+    --artex-warn-text: #FFB340;
+    --artex-fill: rgba(120, 120, 128, 0.26);
+    --artex-add-bg: rgba(48, 209, 88, 0.14);
+    --artex-del-bg: rgba(255, 69, 58, 0.14);
+    --artex-warn-soft: rgba(255, 159, 10, 0.18);
+    --artex-shadow: none;
+    color-scheme: dark;
+  }
+}
