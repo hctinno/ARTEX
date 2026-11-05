@@ -1,0 +1,47 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm test:scripts
+
+  build:
+    needs: unit
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: engine }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:engine
+      - run: pnpm exec electron-forge package
+        working-directory: apps/desktop
+      - run: pnpm e2e
+        working-directory: apps/desktop
+      - run: pnpm exec electron-forge make
+        working-directory: apps/desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artex-${{ matrix.os }}
+          path: apps/desktop/out/make/**

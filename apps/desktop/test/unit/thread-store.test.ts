@@ -27,7 +27,7 @@ describe('ThreadStore', () => {
   it('프로젝트 추가 후 재시작해도 남는다', () => {
     const project = fs.mkdtempSync(path.join(dir, 'proj-'));
     const p = store().addProject(project);
-    expect(p).toMatchObject({ id: 'id-1', path: project, name: path.basename(project) });
+    expect(p).toMatchObject({ id: 'id-1', path: fs.realpathSync.native(project), name: path.basename(project) });
     expect(store().listProjects()).toEqual([p]);
   });
 
@@ -66,7 +66,7 @@ describe('ThreadStore', () => {
       projectId: p.id,
       kind: 'local',
       title: '토큰 갱신 수정',
-      cwd: project,
+      cwd: fs.realpathSync.native(project),
       branch: null,
       worktreePath: null,
       sessionId: null,
@@ -217,7 +217,7 @@ describe('ThreadStore fix round 1', () => {
     const s = store();
     const t = s.createLocalThread(s.addProject(project).id, 'A');
     const next = s.updateThread(t.id, { cwd: '/etc' } as any);
-    expect(next.cwd).toBe(project);
-    expect(store().listThreads()[0]!.cwd).toBe(project);
+    expect(next.cwd).toBe(fs.realpathSync.native(project));
+    expect(store().listThreads()[0]!.cwd).toBe(fs.realpathSync.native(project));
   });
 });

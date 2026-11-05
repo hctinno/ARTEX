@@ -8,7 +8,7 @@
     "build:engine": "node scripts/build-engine.mjs",
     "test": "vitest run",
     "test:scripts": "node --test \"scripts/*.test.mjs\"",
-    "typecheck": "pnpm -r --filter ./packages/* --filter ./apps/* run typecheck"
+    "typecheck": "pnpm -r --filter @artex/ui --filter @artex/core --filter @artex/desktop run typecheck"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
