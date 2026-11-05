@@ -17,6 +17,11 @@ jobs:
         with: { version: 10 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
+      - name: Use HTTPS for GitHub git dependencies
+        run: |
+          git config --global --add url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global --add url."https://github.com/".insteadOf "git@github.com:"
+          git config --global --add url."https://github.com/".insteadOf "git+ssh://git@github.com/"
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
@@ -42,6 +47,11 @@ jobs:
         working-directory: engine
       - uses: Swatinem/rust-cache@v2
         with: { workspaces: engine }
+      - name: Use HTTPS for GitHub git dependencies
+        run: |
+          git config --global --add url."https://github.com/".insteadOf "ssh://git@github.com/"
+          git config --global --add url."https://github.com/".insteadOf "git@github.com:"
+          git config --global --add url."https://github.com/".insteadOf "git+ssh://git@github.com/"
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:engine
       - run: pnpm exec electron-forge package
