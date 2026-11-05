@@ -22,3 +22,5 @@ cd apps/desktop && pnpm exec electron-forge make
 ```
 
 Windows: `apps/desktop/out/make/squirrel.windows/x64/ARTEX-Setup.exe`
+
+macOS: `apps/desktop/out/make/zip/darwin/<arch>/ARTEX-darwin-<arch>-<version>.zip`
