@@ -85,7 +85,9 @@ export class SessionController {
       const { stopReason } = await this.requirePort().prompt(sessionId, text);
       this.transition(threadId, { type: 'prompt_finished', stopReason });
     } catch (error) {
-      this.fail(threadId, error instanceof Error ? error.message : String(error));
+      if (this.getThread(threadId).status !== 'error') {
+        this.fail(threadId, error instanceof Error ? error.message : String(error));
+      }
     }
   }
 
@@ -110,8 +112,11 @@ export class SessionController {
   handlePermission(request: PermissionRequestLike): Promise<PermissionResponseLike> {
     const threadId = this.sessionToThread.get(request.sessionId);
     if (!threadId) return Promise.resolve({ outcome: { outcome: 'cancelled' } });
-    const requestId = `perm-${++this.seq}`;
     const current = this.getThread(threadId);
+    if (current.status !== 'running' && current.status !== 'awaiting_approval') {
+      return Promise.resolve({ outcome: { outcome: 'cancelled' } });
+    }
+    const requestId = `perm-${++this.seq}`;
     this.patch(threadId, {
       status: nextStatus(current.status, { type: 'permission_requested' }),
       items: [

@@ -180,4 +180,35 @@ describe('SessionController', () => {
     c.handleUpdate(chunk(s2, 'x'));
     expect(c.getVersion()).toBeGreaterThan(before);
   });
+
+  it('엔진 유실 후 prompt가 실패해도 오류 항목은 하나만 남는다', async () => {
+    const gate = deferred<{ stopReason: string }>();
+    const c = new SessionController();
+    c.setPort(fakePort({ prompt: vi.fn(() => gate.promise) }));
+    await c.start('t1', '/p');
+    const sending = c.send('t1', 'x');
+    c.markEngineLost('엔진 연결 끊김');
+    gate.reject(new Error('socket closed'));
+    await sending;
+    expect(c.getThread('t1').items.filter((i) => i.kind === 'error')).toHaveLength(1);
+    expect(c.getThread('t1').status).toBe('error');
+  });
+
+  it('idle 스레드에 도착한 승인 요청은 cancelled로 즉시 응답하고 카드를 만들지 않는다', async () => {
+    const c = new SessionController();
+    c.setPort(fakePort());
+    const sid = await c.start('t1', '/p');
+    await expect(c.handlePermission(permission(sid))).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
+    expect(c.getThread('t1').items).toEqual([]);
+  });
+
+  it('엔진 유실 후 도착한 승인 요청은 cancelled로 즉시 응답하고 카드를 만들지 않는다', async () => {
+    const c = new SessionController();
+    c.setPort(fakePort({ prompt: vi.fn(() => new Promise<{ stopReason: string }>(() => {})) }));
+    const sid = await c.start('t1', '/p');
+    void c.send('t1', 'x');
+    c.markEngineLost('엔진 연결 끊김');
+    await expect(c.handlePermission(permission(sid))).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
+    expect(c.getThread('t1').items.find((i) => i.kind === 'permission')).toBeUndefined();
+  });
 });
