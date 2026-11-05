@@ -26,19 +26,28 @@ export async function connectEngine(url: string, handlers: EngineHandlers): Prom
       handlers.onUpdate(ctx.params)
     );
   const connection = app.connect(stream);
+  void connection.closed.catch(() => {});
   const agent = connection.agent;
 
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('엔진 초기화 시간 초과')), INITIALIZE_TIMEOUT_MS)
-  );
-  await Promise.race([
-    agent.request(methods.agent.initialize, {
-      protocolVersion: PROTOCOL_VERSION,
-      clientCapabilities: {},
-      clientInfo: { name: 'artex', version: '0.1.0' },
-    }),
-    timeout,
-  ]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('엔진 초기화 시간 초과')), INITIALIZE_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([
+      agent.request(methods.agent.initialize, {
+        protocolVersion: PROTOCOL_VERSION,
+        clientCapabilities: {},
+        clientInfo: { name: 'artex', version: '0.1.0' },
+      }),
+      timeout,
+    ]);
+  } catch (error) {
+    connection.close();
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
   void connection.closed.then(handlers.onClose, handlers.onClose);
 
   return {

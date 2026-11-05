@@ -41,11 +41,16 @@ export class AppStore {
     this.set({ selectedThreadId: id });
   }
 
-  async createThread(projectId: string, title: string): Promise<ThreadRecord> {
-    const thread = (await window.artex.invoke('threads:create', { projectId, title })) as ThreadRecord;
-    await this.refresh();
-    this.set({ selectedThreadId: thread.id });
-    return thread;
+  async createThread(projectId: string, title: string): Promise<ThreadRecord | null> {
+    try {
+      const thread = (await window.artex.invoke('threads:create', { projectId, title })) as ThreadRecord;
+      await this.refresh();
+      this.set({ selectedThreadId: thread.id });
+      return thread;
+    } catch (error) {
+      this.set({ error: error instanceof Error ? error.message : String(error) });
+      return null;
+    }
   }
 
   async setSessionId(threadId: string, sessionId: string): Promise<void> {

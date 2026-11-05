@@ -58,6 +58,17 @@ describe('AppStore', () => {
     expect(s.getState().error).toContain('PROJECT_PATH_INVALID');
   });
 
+  it('createThread 실패는 error에 담기고 null을 반환한다', async () => {
+    invoke.mockImplementation(async (channel: string) => {
+      if (channel === 'threads:create') throw new Error('PROJECT_NOT_FOUND: 프로젝트 없음');
+      return null;
+    });
+    const s = new AppStore();
+    await expect(s.createThread('p1', 'A')).resolves.toBeNull();
+    expect(s.getState().error).toContain('PROJECT_NOT_FOUND');
+    expect(s.getState().selectedThreadId).toBeNull();
+  });
+
   it('getState는 변경 전까지 같은 객체', async () => {
     const s = new AppStore();
     expect(s.getState()).toBe(s.getState());
