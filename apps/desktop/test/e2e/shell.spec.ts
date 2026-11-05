@@ -23,7 +23,8 @@ test('앱이 뜨고 가짜 엔진으로 ready 상태가 된다', async () => {
     },
   });
   const win = await app.firstWindow();
-  await expect(win.getByTestId('engine-status')).toHaveText('엔진 상태: ready', { timeout: 30_000 });
+  await expect(win.getByText('프로젝트 추가 후 새 스레드 시작')).toBeVisible({ timeout: 30_000 });
+  await expect(win.getByRole('status')).toHaveCount(0, { timeout: 30_000 });
   const prefs = await app.evaluate(({ BrowserWindow }) => {
     const w = BrowserWindow.getAllWindows()[0]!;
     return (w.webContents as unknown as { getLastWebPreferences(): Record<string, unknown> }).getLastWebPreferences();
