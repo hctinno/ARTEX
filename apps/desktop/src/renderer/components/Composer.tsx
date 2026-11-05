@@ -39,10 +39,11 @@ export function Composer({
         aria-label="지시 입력"
         rows={2}
         value={text}
+        disabled={disabled}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder="후속 지시 입력"
-        className="w-full resize-none bg-transparent text-[15px] outline-none"
+        className="w-full resize-none bg-transparent text-[15px] outline-none disabled:opacity-60"
       />
       <div className="flex flex-wrap items-center gap-1.5">
         {visible.map((o) => (

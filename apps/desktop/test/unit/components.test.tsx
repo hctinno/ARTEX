@@ -59,7 +59,10 @@ describe('Composer', () => {
     const onSend = vi.fn();
     render(<Composer {...base} disabled onSend={onSend} />);
     const box = screen.getByLabelText('지시 입력');
+    // 세션이 붙기 전에는 입력란도 비활성: 입력해 둔 Enter가 조용히 버려지지 않게 한다.
+    expect(box).toBeDisabled();
     await userEvent.type(box, '고쳐줘{Enter}');
+    expect(box).toHaveValue('');
     expect(screen.getByRole('button', { name: '보내기' })).toBeDisabled();
     await userEvent.click(screen.getByRole('button', { name: '보내기' }));
     expect(onSend).not.toHaveBeenCalled();
