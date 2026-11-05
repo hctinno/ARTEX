@@ -69,10 +69,17 @@ export class SessionController {
     return sessionId;
   }
 
+  /**
+   * 엔진의 session/load는 전체 기록을 session/update로 재생한다(goose load_session.rs).
+   * 재생이 기존 항목 위에 덧붙지 않도록 타임라인을 비운 뒤 불러오고, 성공하면 idle로 복구한다.
+   */
   async resume(threadId: string, sessionId: string, cwd: string): Promise<void> {
+    const port = this.requirePort();
+    this.cancelPending(threadId);
     this.attach(threadId, sessionId, []);
-    const { configOptions } = await this.requirePort().loadSession(sessionId, cwd);
-    this.patch(threadId, { configOptions: normalizeConfigOptions(configOptions) });
+    this.patch(threadId, { items: [] });
+    const { configOptions } = await port.loadSession(sessionId, cwd);
+    this.patch(threadId, { status: 'idle', configOptions: normalizeConfigOptions(configOptions) });
   }
 
   async send(threadId: string, text: string): Promise<void> {

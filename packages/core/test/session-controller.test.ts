@@ -237,4 +237,44 @@ describe('SessionController', () => {
     await expect(c.handlePermission(permission(sid))).resolves.toEqual({ outcome: { outcome: 'cancelled' } });
     expect(c.getThread('t1').items.find((i) => i.kind === 'permission')).toBeUndefined();
   });
+  it('resume: loadSession이 재생하는 기록은 기존 항목 위에 덧붙지 않고 한 번만 남는다', async () => {
+    let c!: SessionController;
+    const replay = (sid: string) => {
+      c.handleUpdate({ sessionId: sid, update: { sessionUpdate: 'user_message_chunk', content: { type: 'text', text: '고쳐줘' } } });
+      c.handleUpdate(chunk(sid, '고쳤음'));
+    };
+    c = new SessionController();
+    c.setPort(
+      fakePort({
+        loadSession: vi.fn(async (sid: string) => {
+          replay(sid);
+          return { configOptions: [] };
+        }),
+      })
+    );
+    await c.resume('t1', 'sX', '/p');
+    await c.resume('t1', 'sX', '/p');
+    expect(c.getThread('t1').items).toEqual([
+      { kind: 'user', id: 'user-0', text: '고쳐줘' },
+      { kind: 'agent', id: 'agent-1', text: '고쳤음' },
+    ]);
+  });
+
+  it('resume: 엔진 유실로 error가 된 스레드는 loadSession 성공 후 idle로 복구된다', async () => {
+    const c = new SessionController();
+    c.setPort(fakePort({ prompt: vi.fn(() => new Promise<{ stopReason: string }>(() => {})) }));
+    const sid = await c.start('t1', '/p');
+    void c.send('t1', 'x');
+    c.markEngineLost('엔진 연결 끊김');
+    expect(c.getThread('t1').status).toBe('error');
+    c.setPort(fakePort());
+    await c.resume('t1', sid, '/p');
+    expect(c.getThread('t1').status).toBe('idle');
+  });
+
+  it('resume: loadSession 실패 시 상태를 idle로 바꾸지 않고 오류를 전파한다', async () => {
+    const c = new SessionController();
+    c.setPort(fakePort({ loadSession: vi.fn(async (): Promise<{ configOptions: unknown }> => { throw new Error('no session'); }) }));
+    await expect(c.resume('t1', 'sX', '/p')).rejects.toThrow('no session');
+  });
 });
