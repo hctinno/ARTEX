@@ -9,9 +9,10 @@ import { ThreadStore } from './thread-store';
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
-if (process.env.ARTEX_USER_DATA) app.setPath('userData', process.env.ARTEX_USER_DATA);
+if (!app.isPackaged && process.env.ARTEX_USER_DATA) app.setPath('userData', process.env.ARTEX_USER_DATA);
 
 let window: BrowserWindow | null = null;
+let quitting = false;
 
 async function boot() {
   const store = new ThreadStore(path.join(app.getPath('userData'), 'threads.json'));
@@ -38,8 +39,20 @@ async function boot() {
     },
   });
 
-  engine.on('status', (status: EngineStatus) => window?.webContents.send(EVENT_ENGINE_STATUS, status));
-  app.on('before-quit', () => void engine.stop());
+  engine.on('status', (status: EngineStatus) => {
+    if (window && !window.isDestroyed() && !window.webContents.isDestroyed()) {
+      window.webContents.send(EVENT_ENGINE_STATUS, status);
+    }
+  });
+  app.on('before-quit', (event) => {
+    if (quitting) return;
+    event.preventDefault();
+    quitting = true;
+    void engine
+      .stop()
+      .catch((error) => console.error(`[engine] ${String(error)}`))
+      .finally(() => app.quit());
+  });
 
   window = new BrowserWindow({
     width: 1440,
@@ -55,6 +68,10 @@ async function boot() {
     },
   });
 
+  window.on('closed', () => {
+    window = null;
+  });
+
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     await window.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
@@ -64,5 +81,12 @@ async function boot() {
   void engine.start().catch((error) => console.error(`[engine] ${String(error)}`));
 }
 
-app.whenReady().then(boot);
+app
+  .whenReady()
+  .then(boot)
+  .catch((error) => {
+    console.error(`[boot] ${String(error)}`);
+    dialog.showErrorBox('ARTEX 시작 실패', error instanceof Error ? error.message : String(error));
+    app.quit();
+  });
 app.on('window-all-closed', () => app.quit());

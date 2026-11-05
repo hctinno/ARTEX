@@ -23,4 +23,14 @@ describe('resolveEngineBinary', () => {
       resolveEngineBinary({ ...base, env: { ARTEX_ENGINE_BINARY: '/n', ARTEX_ENGINE_ARGS_PREFIX: '"x"' } })
     ).toThrow('ARTEX_ENGINE_ARGS_PREFIX');
   });
+  it('패키징 빌드는 환경 변수를 무시', () => {
+    expect(
+      resolveEngineBinary({ ...base, isPackaged: true, env: { ARTEX_ENGINE_BINARY: '/x/node' } }).binaryPath
+    ).toBe(path.join('/res', 'bin', 'goose'));
+  });
+  it('ARGS_PREFIX가 잘못된 JSON이면 오류', () => {
+    expect(() =>
+      resolveEngineBinary({ ...base, env: { ARTEX_ENGINE_BINARY: '/n', ARTEX_ENGINE_ARGS_PREFIX: '{bad' } })
+    ).toThrow('ARTEX_ENGINE_ARGS_PREFIX');
+  });
 });

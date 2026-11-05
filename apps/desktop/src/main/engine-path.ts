@@ -7,8 +7,16 @@ export function resolveEngineBinary(opts: {
   appPath: string;
   platform: NodeJS.Platform;
 }): { binaryPath: string; argsPrefix: string[] } {
-  if (opts.env.ARTEX_ENGINE_BINARY) {
-    const prefix = opts.env.ARTEX_ENGINE_ARGS_PREFIX ? JSON.parse(opts.env.ARTEX_ENGINE_ARGS_PREFIX) : [];
+  // 개발/테스트 전용 오버라이드: 패키징된 빌드에서는 무시한다.
+  if (!opts.isPackaged && opts.env.ARTEX_ENGINE_BINARY) {
+    let prefix: unknown = [];
+    if (opts.env.ARTEX_ENGINE_ARGS_PREFIX) {
+      try {
+        prefix = JSON.parse(opts.env.ARTEX_ENGINE_ARGS_PREFIX);
+      } catch {
+        throw new Error('ARTEX_ENGINE_ARGS_PREFIX는 유효한 JSON이어야 함');
+      }
+    }
     if (!Array.isArray(prefix) || !prefix.every((a) => typeof a === 'string')) {
       throw new Error('ARTEX_ENGINE_ARGS_PREFIX는 문자열 JSON 배열이어야 함');
     }

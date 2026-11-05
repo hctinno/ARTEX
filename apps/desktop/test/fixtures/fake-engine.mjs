@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import http from 'node:http';
 
 const args = process.argv.slice(2);
@@ -6,6 +7,7 @@ if (!process.env.GOOSE_SERVER__SECRET_KEY) {
   console.error('missing secret');
   process.exit(2);
 }
+if (process.env.FAKE_ENGINE_PID_FILE) fs.writeFileSync(process.env.FAKE_ENGINE_PID_FILE, String(process.pid));
 const mode = process.env.FAKE_ENGINE_MODE ?? 'ok';
 if (mode === 'split-secret') {
   const key = process.env.GOOSE_SERVER__SECRET_KEY;
