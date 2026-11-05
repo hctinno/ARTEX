@@ -31,7 +31,8 @@ describe('registerIpcHandlers', () => {
   it('projects:pick → 선택한 폴더를 프로젝트로 추가', async () => {
     const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'artex-p-'));
     const { call } = setup(folder);
-    await expect(call('projects:pick')).resolves.toMatchObject({ path: folder });
+    // 저장소는 realpath로 정규화한다(macOS tmpdir는 /var → /private/var 심볼릭 링크).
+    await expect(call('projects:pick')).resolves.toMatchObject({ path: fs.realpathSync.native(folder) });
     await expect(call('projects:list')).resolves.toHaveLength(1);
   });
 

@@ -53,6 +53,8 @@ jobs:
           git config --global --add url."https://github.com/".insteadOf "git@github.com:"
           git config --global --add url."https://github.com/".insteadOf "git+ssh://git@github.com/"
       - run: pnpm install --frozen-lockfile
+      # 경로·심볼릭 링크·셸 차이로 OS별로만 드러나는 단위 테스트 실패를 잡는다.
+      - run: pnpm test
       - run: pnpm build:engine
       - run: pnpm exec electron-forge package
         working-directory: apps/desktop
