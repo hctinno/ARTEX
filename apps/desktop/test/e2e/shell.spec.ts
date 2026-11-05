@@ -84,3 +84,36 @@ test('두 번째 실행은 즉시 종료되고 기존 인스턴스가 second-ins
     await app.close();
   }
 });
+
+test('엔진은 ready인데 ACP 연결이 실패하면 자동 재시도하고 "다시 연결"로 즉시 재시도한다', async () => {
+  const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'artex-e2e-'));
+  const hitsFile = path.join(userData, 'acp-hits');
+  const hits = () => (fs.existsSync(hitsFile) ? Number(fs.readFileSync(hitsFile, 'utf8')) : 0);
+  const env: Record<string, string> = {};
+  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && k !== 'ELECTRON_RUN_AS_NODE') env[k] = v;
+  const app = await electron.launch({
+    args: [...(needsNoSandbox ? ['--no-sandbox'] : []), path.join(appDir, '.vite/build/main.js')],
+    env: {
+      ...env,
+      ARTEX_USER_DATA: userData,
+      ARTEX_ENGINE_BINARY: process.execPath,
+      ARTEX_ENGINE_ARGS_PREFIX: JSON.stringify([path.join(appDir, 'test/fixtures/fake-engine.mjs')]),
+      FAKE_ENGINE_ACP_HITS_FILE: hitsFile,
+    },
+  });
+  try {
+    const win = await app.firstWindow();
+    const banner = win.getByRole('alert').filter({ hasText: '엔진 연결 안 됨' });
+    await expect(banner).toBeVisible({ timeout: 30_000 });
+    // 0.5s → 1s 백오프로 사람 개입 없이 다시 시도한다.
+    await expect.poll(hits, { timeout: 10_000 }).toBeGreaterThanOrEqual(3);
+    // 백오프가 커진 뒤(8s 이상)에도 버튼은 즉시 재시도한다.
+    await expect.poll(hits, { timeout: 20_000 }).toBeGreaterThanOrEqual(5);
+    const before = hits();
+    await banner.getByRole('button', { name: '다시 연결' }).click();
+    await expect.poll(hits, { timeout: 2_000 }).toBeGreaterThan(before);
+    await expect(win.getByText('[object Event]')).toHaveCount(0);
+  } finally {
+    await app.close();
+  }
+});

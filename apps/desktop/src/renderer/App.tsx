@@ -4,7 +4,7 @@ import { Composer } from './components/Composer';
 import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
 import { ThreadView } from './components/ThreadView';
-import { appStore, bootEngine, connectionStore, controller, ensureThreadSession, getConnection } from './runtime';
+import { appStore, connectionStore, controller, ensureThreadSession, getConnection, reconnector } from './runtime';
 import { useStore } from './state/use-store';
 
 const errMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -20,6 +20,7 @@ export function App() {
   const state = useStore(appStore, () => appStore.getState());
   useStore(controller, () => controller.getVersion());
   const connVersion = useStore(connectionStore, () => connectionStore.getVersion());
+  const reconnect = useStore(reconnector, () => reconnector.getState());
   const [readyThreadId, setReadyThreadId] = useState<string | null>(null);
   const [engine, setEngine] = useState<EngineStatusView>({ state: 'starting' });
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -32,7 +33,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (engine.state === 'ready') void bootEngine().catch((e) => setThreadError(errMessage(e)));
+    // 엔진이 ready인 동안 소켓 연결을 유지한다(실패·끊김 시 백오프 재시도).
+    reconnector.setReady(engine.state === 'ready');
   }, [engine.state]);
 
   const selected = state.threads.find((t) => t.id === state.selectedThreadId) ?? null;
@@ -86,6 +88,18 @@ export function App() {
           <div role="status" className="bg-[var(--artex-warn-soft)] px-7 py-2 text-[13px] text-[var(--artex-warn-text)]">
             엔진 {ENGINE_LABEL[engine.state]}
             {engine.message ? ` · ${engine.message}` : ''}
+          </div>
+        )}
+        {engine.state === 'ready' && reconnect.error && !getConnection() && (
+          <div role="alert" className="flex items-center gap-3 bg-[var(--artex-warn-soft)] px-7 py-2 text-[13px] text-[var(--artex-warn-text)]">
+            <span>엔진 연결 안 됨 · {reconnect.error} · 자동 재연결 중</span>
+            <button
+              type="button"
+              onClick={() => void reconnector.connectNow()}
+              className="ml-auto min-h-8 rounded-full bg-[var(--artex-pane)] px-3 font-semibold text-[var(--artex-text)]"
+            >
+              다시 연결
+            </button>
           </div>
         )}
         {(state.error || threadError) && (

@@ -19,7 +19,12 @@ if (mode === 'split-secret') {
 }
 if (mode === 'crash-immediately') process.exit(3);
 
+// ACP 웹소켓은 흉내 내지 않는다(연결 시도는 404). FAKE_ENGINE_ACP_HITS_FILE이 있으면 시도 횟수를 기록한다.
+let acpHits = 0;
 const server = http.createServer((req, res) => {
+  if (req.url?.startsWith('/acp') && process.env.FAKE_ENGINE_ACP_HITS_FILE) {
+    fs.writeFileSync(process.env.FAKE_ENGINE_ACP_HITS_FILE, String(++acpHits));
+  }
   res.writeHead(req.url === '/status' ? 200 : 404);
   res.end('ok');
 });
