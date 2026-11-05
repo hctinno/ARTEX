@@ -17,11 +17,20 @@ export function Settings({ onClose, api }: { onClose(): void; api?: ProviderApi 
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
+    setSelected(null);
     if (!client) return;
+    let cancelled = false;
     void client
       .providersList_unstable({})
-      .then((r) => setProviders(visibleProviders(r.entries)))
-      .catch((e: unknown) => setMessage({ tone: 'error', text: e instanceof Error ? e.message : String(e) }));
+      .then((r) => {
+        if (!cancelled) setProviders(visibleProviders(r.entries));
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setMessage({ tone: 'error', text: e instanceof Error ? e.message : String(e) });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [client]);
 
   if (!client) {
@@ -38,13 +47,13 @@ export function Settings({ onClose, api }: { onClose(): void; api?: ProviderApi 
   const choose = (p: ProviderEntryView) => {
     setSelected(p);
     setValues({});
-    setModel(p.defaultModel);
+    setModel(p.models.some((m) => m.id === p.defaultModel) ? p.defaultModel : (p.models[0]?.id ?? ''));
     setMessage(null);
   };
 
   const save = async () => {
     if (!selected) return;
-    const { fields, missing } = buildConfigFields(selected.configKeys, values);
+    const { fields, missing } = buildConfigFields(selected.configKeys, values, selected.configured);
     if (missing.length) {
       setMessage({ tone: 'error', text: `필수 입력 누락: ${missing.join(', ')}` });
       return;
@@ -52,6 +61,7 @@ export function Settings({ onClose, api }: { onClose(): void; api?: ProviderApi 
     try {
       if (fields.length) await client.providersConfigSave_unstable({ providerId: selected.providerId, fields });
       await client.defaultsSave_unstable({ providerId: selected.providerId, modelId: model || null });
+      setValues({});
       setMessage({ tone: 'ok', text: '저장 완료' });
     } catch (e) {
       setMessage({ tone: 'error', text: e instanceof Error ? e.message : String(e) });
@@ -76,6 +86,7 @@ export function Settings({ onClose, api }: { onClose(): void; api?: ProviderApi 
             className={`min-h-11 rounded-full px-4 ${selected?.providerId === p.providerId ? 'bg-[var(--artex-accent)] text-white' : 'bg-[var(--artex-fill)]'}`}
           >
             {p.providerName}
+            {p.configured && <span className="ml-2 text-[12px] opacity-80">설정됨</span>}
           </button>
         ))}
       </div>
@@ -96,28 +107,30 @@ export function Settings({ onClose, api }: { onClose(): void; api?: ProviderApi 
               <input
                 aria-label={k.name}
                 type={k.secret ? 'password' : 'text'}
-                placeholder={k.default ?? ''}
+                placeholder={selected.configured && k.secret ? '저장된 값 유지' : (k.default ?? '')}
                 value={values[k.name] ?? ''}
                 onChange={(e) => setValues({ ...values, [k.name]: e.target.value })}
                 className="min-h-11 rounded-[14px] bg-[var(--artex-pane)] px-3.5"
               />
             </label>
           ))}
-          <label className="flex flex-col gap-1 text-[13px]">
-            <span>기본 모델</span>
-            <select
-              aria-label="기본 모델"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="min-h-11 rounded-[14px] bg-[var(--artex-pane)] px-3.5"
-            >
-              {selected.models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {selected.models.length > 0 && (
+            <label className="flex flex-col gap-1 text-[13px]">
+              <span>기본 모델</span>
+              <select
+                aria-label="기본 모델"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="min-h-11 rounded-[14px] bg-[var(--artex-pane)] px-3.5"
+              >
+                {selected.models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button type="submit" className="min-h-11 rounded-full bg-[var(--artex-accent)] font-semibold text-white">
             저장
           </button>

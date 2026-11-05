@@ -35,3 +35,10 @@ describe('buildConfigFields', () => {
     expect(buildConfigFields(keys, { OPENAI_API_KEY: '  ' }).missing).toEqual(['OPENAI_API_KEY']);
   });
 });
+
+describe('buildConfigFields (configured)', () => {
+  const keys = [{ name: 'OPENAI_API_KEY', required: true, secret: true }];
+  it('설정된 프로바이더는 빈 필수 키를 누락으로 보지 않음 (저장된 값 유지)', () => {
+    expect(buildConfigFields(keys, {}, true)).toEqual({ fields: [], missing: [] });
+  });
+});

@@ -25,13 +25,18 @@ export function visibleProviders(entries: unknown[]): ProviderEntryView[] {
 }
 
 /** 입력된(공백 제외) 값만 전송 대상으로 모으고, 비어 있는 필수 키는 missing으로 보고한다. */
-export function buildConfigFields(keys: ProviderEntryView['configKeys'], values: Record<string, string>) {
+export function buildConfigFields(
+  keys: ProviderEntryView['configKeys'],
+  values: Record<string, string>,
+  configured = false,
+) {
   const fields: { key: string; value: string }[] = [];
   const missing: string[] = [];
   for (const k of keys) {
     const value = (values[k.name] ?? '').trim();
     if (value) fields.push({ key: k.name, value });
-    else if (k.required) missing.push(k.name);
+    // 이미 설정된 프로바이더는 빈 필수 키가 저장된 값을 유지하므로 누락으로 보지 않는다.
+    else if (k.required && !configured) missing.push(k.name);
   }
   return { fields, missing };
 }
