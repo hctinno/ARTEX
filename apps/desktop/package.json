@@ -2,6 +2,8 @@
   "name": "@artex/desktop",
   "productName": "ARTEX",
   "version": "0.1.0",
+  "description": "ARTEX desktop coding-agent IDE powered by the goose engine",
+  "author": "HCT",
   "private": true,
   "main": ".vite/build/main.js",
   "scripts": {
