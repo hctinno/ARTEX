@@ -115,3 +115,34 @@ describe('Settings fixes', () => {
     expect(api.defaultsSave_unstable).toHaveBeenCalledWith({ providerId: 'openai', modelId: 'a' });
   });
 });
+
+describe('Settings save marks provider configured', () => {
+  it('저장 성공 후 설정됨으로 전환되어 모델만 바꿔 재저장해도 필수 누락 아님', async () => {
+    const api = entryApi({});
+    render(<Settings onClose={() => {}} api={api as any} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'OpenAI' }));
+    await userEvent.type(screen.getByLabelText('OPENAI_API_KEY'), 'sk-test');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(await screen.findByText('저장 완료')).toBeInTheDocument();
+    expect(screen.getByText('설정됨')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(api.providersConfigSave_unstable).toHaveBeenCalledTimes(1);
+    expect(api.defaultsSave_unstable).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByText('저장 완료')).toBeInTheDocument();
+  });
+
+  it('설정 저장 성공 후 기본값 저장이 실패해도 입력한 키는 지워짐', async () => {
+    const api = entryApi({});
+    api.defaultsSave_unstable = vi.fn(async () => {
+      throw new Error('defaults failed');
+    });
+    render(<Settings onClose={() => {}} api={api as any} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'OpenAI' }));
+    await userEvent.type(screen.getByLabelText('OPENAI_API_KEY'), 'sk-test');
+    await userEvent.click(screen.getByRole('button', { name: '저장' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('defaults failed');
+    expect(api.providersConfigSave_unstable).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('OPENAI_API_KEY')).toHaveValue('');
+  });
+});

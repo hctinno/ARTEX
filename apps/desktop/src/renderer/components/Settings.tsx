@@ -58,12 +58,25 @@ export function Settings({ onClose, api }: { onClose(): void; api?: ProviderApi 
       setMessage({ tone: 'error', text: `필수 입력 누락: ${missing.join(', ')}` });
       return;
     }
+    const id = selected.providerId;
+    // 설정이 저장되면 저장된 값이 생기므로 로컬 상태도 설정됨으로 바꾼다.
+    const markConfigured = () => {
+      setSelected((s) => (s && s.providerId === id ? { ...s, configured: true } : s));
+      setProviders((ps) => ps.map((p) => (p.providerId === id ? { ...p, configured: true } : p)));
+    };
+    let configSaved = false;
     try {
-      if (fields.length) await client.providersConfigSave_unstable({ providerId: selected.providerId, fields });
-      await client.defaultsSave_unstable({ providerId: selected.providerId, modelId: model || null });
+      if (fields.length) {
+        await client.providersConfigSave_unstable({ providerId: id, fields });
+        configSaved = true;
+        markConfigured();
+      }
+      await client.defaultsSave_unstable({ providerId: id, modelId: model || null });
       setValues({});
       setMessage({ tone: 'ok', text: '저장 완료' });
     } catch (e) {
+      // 설정 저장이 끝났다면 입력한 비밀 키는 이미 전송된 것이므로 지운다.
+      if (configSaved) setValues({});
       setMessage({ tone: 'error', text: e instanceof Error ? e.message : String(e) });
     }
   };
