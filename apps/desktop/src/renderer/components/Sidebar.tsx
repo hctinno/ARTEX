@@ -52,7 +52,7 @@ export function Sidebar({
                   >
                     <span className="min-w-0 truncate">{t.title}</span>
                     <span className="ml-auto">
-                      <StatusBadge status={statusOf(t.id)} />
+                      <StatusBadge status={statusOf(t.id)} selected={t.id === selectedId} />
                     </span>
                   </button>
                 </li>

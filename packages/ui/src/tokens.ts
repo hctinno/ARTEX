@@ -34,3 +34,16 @@ export const tokens: Record<'light' | 'dark', ThemeTokens> = {
     warnText: '#FFB340',
   },
 };
+
+/**
+ * 강조색(선택된 사이드바 행) 위에 놓이는 상태 배지 색. 라이트·다크 공통.
+ * 중립 배지는 강조색 위에 검정 오버레이 + 흰 글자, 승인 대기·오류는 흰 바탕에 라이트 테마 경고·삭제 글자색.
+ */
+export const selectedBadge = {
+  text: '#FFFFFF',
+  overlay: '#000000',
+  overlayAlpha: 0.24,
+  solidBg: '#FFFFFF',
+  warnText: '#8F4A00',
+  delText: '#B3261E',
+} as const;

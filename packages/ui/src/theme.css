@@ -13,6 +13,12 @@
   --artex-del-bg: #FDEBE9;
   --artex-warn-soft: #FFEFD6;
   --artex-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);
+  /* 강조색 선택 행 위 상태 배지 (라이트·다크 공통, tokens.ts selectedBadge) */
+  --artex-sel-badge-bg: rgba(0, 0, 0, 0.24);
+  --artex-sel-badge-text: #FFFFFF;
+  --artex-sel-solid-bg: #FFFFFF;
+  --artex-sel-warn-text: #8F4A00;
+  --artex-sel-del-text: #B3261E;
   --artex-radius-pane: 24px;
   --artex-radius-row: 12px;
   --artex-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;

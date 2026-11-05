@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApprovalCard } from '../../src/renderer/components/ApprovalCard';
 import { Composer } from '../../src/renderer/components/Composer';
+import { Sidebar } from '../../src/renderer/components/Sidebar';
 import { StatusBadge } from '../../src/renderer/components/StatusBadge';
 import { ThreadView } from '../../src/renderer/components/ThreadView';
 
@@ -127,5 +128,33 @@ describe('ThreadView', () => {
     expect(screen.getByText('npm test')).toBeInTheDocument();
     expect(screen.getByText('a.ts')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('401');
+  });
+});
+
+describe('Sidebar 선택 행 배지', () => {
+  const projects = [{ id: 'p1', name: 'proj', path: '/p' }] as never[];
+  const threads = [
+    { id: 't1', projectId: 'p1', title: '선택됨', cwd: '/p', sessionId: null },
+    { id: 't2', projectId: 'p1', title: '다른 것', cwd: '/p', sessionId: null },
+  ] as never[];
+  it.each(['running', 'awaiting_approval', 'error'] as const)('%s: 선택 행은 강조색용 배지, 다른 행은 기본 배지', (status) => {
+    render(
+      <Sidebar
+        projects={projects}
+        threads={threads}
+        statusOf={() => status}
+        selectedId="t1"
+        onSelect={() => {}}
+        onNewThread={() => {}}
+        onAddProject={() => {}}
+        onOpenSettings={() => {}}
+      />
+    );
+    const [selectedBadge, otherBadge] = screen.getAllByTestId('status-badge');
+    expect(screen.getByRole('button', { name: /선택됨/ })).toContainElement(selectedBadge!);
+    expect(selectedBadge).toHaveAttribute('data-selected', 'true');
+    expect(selectedBadge!.className).toContain('--artex-sel-');
+    expect(otherBadge).not.toHaveAttribute('data-selected');
+    expect(otherBadge!.className).not.toContain('--artex-sel-');
   });
 });

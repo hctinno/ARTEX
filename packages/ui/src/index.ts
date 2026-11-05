@@ -1,2 +1,2 @@
-export { tokens, type ThemeTokens } from './tokens';
-export { contrastRatio } from './contrast';
+export { selectedBadge, tokens, type ThemeTokens } from './tokens';
+export { blend, contrastRatio } from './contrast';
