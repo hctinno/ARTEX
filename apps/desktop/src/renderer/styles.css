@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+@import '@artex/ui/theme.css';
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--artex-bg);
+  color: var(--artex-text);
+  font-family: var(--artex-font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
